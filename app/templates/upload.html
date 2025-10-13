@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Subir CSV — Minimal</title>
+    <link rel="stylesheet" href="/static/css/reset.css" />
+
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --card: #ffffff;
+        --accent: #0b7cff;
+        --muted: #6b7280;
+        --danger: #d9534f;
+      }
+
+      #result {
+        margin-top: 14px;
+      }
+
+      #meta {
+        justify-content: center;
+        margin-top: 12px;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: #111;
+      }
+      .card {
+        background: var(--card);
+        padding: 28px;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(12, 15, 20, 0.06);
+        width: 100%;
+        max-width: 480px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      p.lead {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .btn {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .small {
+        font-size: 12px;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 13px;
+      }
+      .error {
+        color: var(--danger);
+      }
+      pre {
+        background: #f4f6f8;
+        padding: 10px;
+        border-radius: 6px;
+        overflow: auto;
+        font-size: 12px;
+      }
+      .meta {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 6px 8px;
+        background: #f1f5f9;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #0b1720;
+      }
+      input[type="file"] {
+        display: none;
+      }
+
+      .actions-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+
+      .drop {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        inline-size: 100%;
+        min-height: 160px;
+        margin-top: 1rem;
+
+        padding: 2rem;
+        border: 2px dashed rgba(11, 124, 255, 0.25);
+        border-radius: 12px;
+
+        background: linear-gradient(
+          180deg,
+          rgba(11, 124, 255, 0.03),
+          transparent
+        );
+        transition: box-shadow 0.15s, border-color 0.15s, background-color 0.15s;
+        cursor: pointer;
+      }
+
+      .drop:hover {
+        background-color: rgba(11, 124, 255, 0.02);
+      }
+
+      .drop.dragover {
+        border-color: var(--accent);
+        box-shadow: 0 4px 18px rgba(11, 124, 255, 0.1);
+      }
+
+      .result-box {
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.4;
+        margin-top: 8px;
+      }
+
+      .result-success {
+        background: rgba(46, 204, 113, 0.12);
+        border: 1px solid rgba(46, 204, 113, 0.3);
+        color: #216c42;
+      }
+
+      .result-error {
+        background: rgba(217, 83, 79, 0.12);
+        border: 1px solid rgba(217, 83, 79, 0.3);
+        color: #a12b2b;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" role="main">
+      <h1>Sube tu archivo CSV</h1>
+      <p class="lead">
+        Arrastra y suelta un archivo .csv o haz clic para seleccionarlo.
+        Validamos cliente y servidor.
+      </p>
+
+      <form
+        id="uploadForm"
+        method="post"
+        enctype="multipart/form-data"
+        action="/upload"
+        novalidate
+        class="form"
+      >
+        <label id="dropzone" class="drop" for="fileInput" data-dropzone>
+          <div id="prompt">
+            <strong id="promptTitle">Suelta el CSV aquí</strong>
+            <div class="muted small" id="promptSub">
+              O haz clic para elegir un archivo. Solo .csv
+            </div>
+            <div class="meta" id="meta" aria-hidden="true">
+              <span class="chip">soporta: , ; tab |</span>
+            </div>
+          </div>
+          <input
+            id="fileInput"
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+          />
+        </label>
+
+        <div class="actions-group">
+          <button type="submit" class="btn" id="submitBtn">Subir</button>
+          <div id="status" class="status muted">Sin archivo seleccionado</div>
+        </div>
+      </form>
+
+      <div id="result" aria-live="polite"></div>
+    </main>
+  </body>
+  <script defer>
+    /* Código cliente declarativo (uso de data-attributes y funciones puras) */
+    (function () {
+      const qs = (sel) => document.querySelector(sel);
+      const drop = qs("[data-dropzone]");
+      const input = qs("#fileInput");
+      const status = qs("#status");
+      const result = qs("#result");
+      const form = qs("#uploadForm");
+
+      const state = { file: null };
+
+      // funciones "puras" para crear mensajes
+      const mkStatus = (txt, kind) => {
+        status.textContent = txt;
+        status.className = kind ? "status " + kind : "status";
+      };
+      const mkResult = (obj) => {
+        if (!obj) {
+          result.innerHTML = "";
+          return;
+        }
+
+        if (obj.ok) {
+          result.innerHTML = `
+      <div class="result-box result-success">
+        <strong>Subida correcta:</strong> ${escapeHtml(obj.filename)}<br>
+        Guardado en: <code>${escapeHtml(obj.saved_to)}</code>
+        <pre>${escapeHtml(JSON.stringify(obj.validation, null, 2))}</pre>
+      </div>
+    `;
+        } else {
+          const details = obj.details
+            ? `<pre>${escapeHtml(JSON.stringify(obj.details, null, 2))}</pre>`
+            : "";
+          result.innerHTML = `
+      <div class="result-box result-error">
+        <strong>Error:</strong> ${escapeHtml(obj.error || "Error desconocido")}
+        ${details}
+      </div>
+    `;
+        }
+      };
+
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      }
+
+      function clientValidate(file) {
+        const allowedExt = /\.csv$/i;
+        if (!file.name || !allowedExt.test(file.name))
+          return {
+            ok: false,
+            msg: "El nombre de archivo debe terminar en .csv",
+          };
+        if (
+          file.type &&
+          !(file.type.startsWith("text/") || file.type.includes("csv"))
+        ) {
+          console.warn("Tipo MIME sospechoso:", file.type);
+        }
+        return { ok: true };
+      }
+
+      function quickContentCheck(file) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const text = String(e.target.result || "");
+            const sample = text.slice(0, 8192);
+            const hasComma = sample.includes(",");
+            const hasSemicolon = sample.includes(";");
+            const hasTab = sample.includes("\t");
+            if (!(hasComma || hasSemicolon || hasTab)) {
+              resolve({
+                ok: false,
+                msg: "No se detectó un separador común (, ; o tab). Revisa tu archivo.",
+              });
+            } else {
+              resolve({ ok: true });
+            }
+          };
+          reader.onerror = () =>
+            resolve({
+              ok: false,
+              msg: "No se pudo leer el archivo en el navegador.",
+            });
+          reader.readAsText(file.slice(0, 8192));
+        });
+      }
+
+      // manejadores declarativos
+      const onFileChosen = async (file) => {
+        if (!file) return;
+        mkStatus("Validando archivo (cliente)...");
+        const checkName = clientValidate(file);
+        if (!checkName.ok) {
+          mkStatus("Error: " + checkName.msg, "error");
+          mkResult({ ok: false, error: checkName.msg });
+          return;
+        }
+
+        const quick = await quickContentCheck(file);
+        if (!quick.ok) {
+          mkStatus("Error: " + quick.msg, "error");
+          mkResult({ ok: false, error: quick.msg });
+          return;
+        }
+
+        state.file = file;
+        mkStatus(
+          `${file.name} listo para subir (${Math.round(file.size / 1024)} KB)`
+        );
+        mkResult(null);
+      };
+
+      ["dragenter", "dragover"].forEach((ev) =>
+        drop.addEventListener(ev, (e) => {
+          e.preventDefault();
+          drop.classList.add("dragover");
+        })
+      );
+      ["dragleave", "drop"].forEach((ev) =>
+        drop.addEventListener(ev, (e) => {
+          drop.classList.remove("dragover");
+        })
+      );
+      drop.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const f =
+          e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) {
+          input.files = e.dataTransfer.files;
+          onFileChosen(f);
+        }
+      });
+
+      input.addEventListener("change", (e) => {
+        const f = input.files && input.files[0];
+        onFileChosen(f);
+      });
+
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        if (!state.file) {
+          mkStatus("Selecciona un archivo antes de subir.", "error");
+          return;
+        }
+
+        mkStatus("Subiendo...");
+        const fd = new FormData();
+        fd.append("file", state.file, state.file.name);
+
+        try {
+          const resp = await fetch("/upload", { method: "POST", body: fd });
+          const json = await resp.json();
+          if (resp.ok) {
+            mkStatus("Subida completa");
+            // mkResult(json);
+          } else {
+            mkStatus("Error al subir", "error");
+            // mkResult(json);
+          }
+        } catch (err) {
+          mkStatus("Error de red al subir", "error");
+          mkResult({ ok: false, error: err.message || String(err) });
+        }
+      });
+
+      drop.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") input.click();
+      });
+    })();
+  </script>
+</html>

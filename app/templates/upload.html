@@ -210,7 +210,6 @@
     </main>
   </body>
   <script defer>
-    /* Código cliente declarativo (uso de data-attributes y funciones puras) */
     (function () {
       const qs = (sel) => document.querySelector(sel);
       const drop = qs("[data-dropzone]");
@@ -375,12 +374,19 @@
         try {
           const resp = await fetch("/upload", { method: "POST", body: fd });
           const json = await resp.json();
-          if (resp.ok) {
-            mkStatus("Subida completa");
-            // mkResult(json);
+          if (resp.ok && json.ok) {
+            mkStatus("Subida completa ✅");
+            result.innerHTML = `
+        <div class="result-box result-success">
+          <strong>Archivo subido correctamente:</strong> ${escapeHtml(
+            state.file.name
+          )}<br>
+          <span class="muted small">Puedes revisar el estado en <a href="/check.html">check.html</a></span>
+        </div>
+      `;
           } else {
             mkStatus("Error al subir", "error");
-            // mkResult(json);
+            mkResult(json);
           }
         } catch (err) {
           mkStatus("Error de red al subir", "error");

@@ -174,3 +174,21 @@ async def upload_csv(file: UploadFile = File(...)):
         "validation": result["info"],
     }
     return JSONResponse(status_code=200, content=response)
+
+
+@app.get("/check", response_class=HTMLResponse)
+def get_form(request: Request):
+    return templates.TemplateResponse("status.html", {"request": request})
+
+
+@app.post("/check", response_class=HTMLResponse)
+def check_status(request: Request, work_id: str = Form(...)):
+    # Simula consultar el estado
+    # Aquí reemplaza con tu lógica real
+    fake_db = {"123": "ok", "456": "pendiente", "789": "error"}
+    status = fake_db.get(work_id, "pendiente")
+    download_url = f"/download/{work_id}" if status == "ok" else None
+    return templates.TemplateResponse(
+        "status.html",
+        {"request": request, "status": status, "download_url": download_url},
+    )

@@ -1,7 +1,6 @@
 # tasks.py
 from celery_app import celery
 import redis
-from sqlalchemy.orm import Session
 
 r = redis.Redis()
 

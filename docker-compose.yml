@@ -1,33 +1,38 @@
 services:
   postgres:
-    image: postgres:15
-    container_name: postgres
+    image: postgres:17
+    container_name: signaldb
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppass
-      POSTGRES_DB: appdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - signal_pg_data:/var/lib/postgresql/data
+    networks:
+      - signal_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7
-    container_name: redis
+    container_name: d4lia_redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
     volumes:
-      - redis_data:/data
+      - signal_redis_data:/data
+    networks:
+      - signal_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   celery_worker:
@@ -39,14 +44,16 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - DATABASE_URL=postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./:/app
+    networks:
+      - signal_network
 
   celery_beat:
     build:
@@ -57,15 +64,21 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - DATABASE_URL=postgresql+psycopg2://appuser:apppass@postgres:5432/appdb
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./:/app
+    networks:
+      - signal_network
 
 volumes:
-  pg_data:
-  redis_data:
+  signal_pg_data:
+  signal_redis_data:
+
+networks:
+  signal_network:
+    driver: bridge

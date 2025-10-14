@@ -1,41 +1,50 @@
-# enums
 from enum import Enum
+from typing import Optional, Any
+from uuid import UUID, uuid4
+from datetime import datetime
+
+from sqlmodel import SQLModel, Field, Relationship
 
 
-class WorkStatus(Enum):
+class WorkStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
-class TaskStatus(Enum):
+
+class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
-# Work (un upload de CSV - agrupa tasks)
-class Work(Base):
-    __tablename__ = "works"
-    id = Column(UUID, primary_key=True, default=uuid4)
-    filename = Column(String)
-    storage_path = Column(String)        # ruta en S3 o local
-    status = Column(Enum(WorkStatus), default=WorkStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    max_tasks = Column(Integer, nullable=True)  # valor que defines al crear
-    output_path = Column(String, nullable=True) # si hay output global
-    error = Column(Text, nullable=True)
 
-class Task(Base):
-    __tablename__ = "tasks"
-    id = Column(UUID, primary_key=True, default=uuid4)
-    work_id = Column(UUID, ForeignKey("works.id"))
-    payload = Column(JSON)               # fila del csv u otros datos
-    status = Column(Enum(TaskStatus), default=TaskStatus.PENDING)
-    result_path = Column(String, nullable=True)  # path al output si aplica
-    attempts = Column(Integer, default=0)
-    error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+class Work(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    filename: str
+    storage_path: str
+    status: WorkStatus = Field(default=WorkStatus.PENDING)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    max_tasks: Optional[int] = None
+    output_path: Optional[str] = None
+    error: Optional[str] = None
+
+    tasks: list["Task"] = Relationship(back_populates="work")
+
+
+class Task(SQLModel, table=True):
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    work_id: UUID = Field(foreign_key="works.id")
+    payload: Any
+    status: TaskStatus = Field(default=TaskStatus.PENDING)
+    result_path: Optional[str] = None
+    attempts: int = Field(default=0)
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # relación con Work
+    work: Optional[Work] = Relationship(back_populates="tasks")

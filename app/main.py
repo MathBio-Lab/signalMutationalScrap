@@ -192,3 +192,23 @@ def check_status(request: Request, work_id: str = Form(...)):
         "status.html",
         {"request": request, "status": status, "download_url": download_url},
     )
+
+
+@app.post("/uploasasdasdd")
+async def upload_csvf(file: UploadFile, max_tasks: int = Form(None), db: Session = Depends(get_db)):
+    work_id = str(uuid4())
+    # guardar archivo en storage (S3 o disk)
+    storage_path = save_file_to_storage(file, folder=f"works/{work_id}")
+    work = Work(id=work_id, filename=file.filename, storage_path=storage_path, max_tasks=max_tasks)
+    db.add(work); db.commit()
+    # stream csv -> crear tasks
+    created = 0
+    for row in stream_csv_from_storage(storage_path):
+        if max_tasks and created >= max_tasks:
+            break
+        task = Task(work_id=work_id, payload=row)
+        db.add(task); db.commit()
+        # enqueue job con celery
+        celery.send_task("tasks.process_task", args=[str(task.id)])
+        created += 1
+    return {"idwork": work_id, "tasks_enqueued": created}

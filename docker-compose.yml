@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: d4lia_redis
+    container_name: signal_redis
     restart: unless-stopped
     ports:
       - "6379:6379"

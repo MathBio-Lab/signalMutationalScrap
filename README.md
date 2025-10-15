@@ -1,12 +1,10 @@
 Rate limit realista: por ejemplo 1 petición cada 1–3s. Para 2000 IDs, a 2s por petición tardas ~66 minutos. Ajusta expectativas.
 Cacheamos resultados
 
-
 Pedir permiso o solicitar un endpoint batch al propietario del sitio.
 Consumo de API (si existe).# signalMutationalScrap
 
-
-1) Diagrama lógico (resumen)
+1. Diagrama lógico (resumen)
 
 Cliente → FastAPI
 
@@ -90,11 +88,19 @@ Control global entre múltiples workers y máquinas.
 
 Puedes cambiar el límite en caliente poniendo el número de tokens deseado.
 
-Pseudocódigo de adquisición: 
+Pseudocódigo de adquisición:
 
 # acquire token (atomic)
-if redis.decr("tokens") >= 0:
-    # proceed
+
+if redis.decr("tokens") >= 0: # proceed
 else:
-    redis.incr("tokens")  # devolver si no hay
-    raise NoToken
+redis.incr("tokens") # devolver si no hay
+raise NoToken
+
+# uso aplicar el historial de migraciones
+
+>[!IMPORTANT] Si se desea aplicar una nueva migración: `alembic revision --autogenerate -m "mensaje de la migración"`
+
+```bash
+alembic upgrade head
+```

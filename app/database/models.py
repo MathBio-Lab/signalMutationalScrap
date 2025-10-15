@@ -1,9 +1,15 @@
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
 from datetime import datetime
 
+from sqlalchemy import Column, JSON
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from .models import (
+        Task,
+    )  # evita errores de referencia circular en tiempo de ejecución
 
 
 class WorkStatus(str, Enum):
@@ -22,6 +28,7 @@ class TaskStatus(str, Enum):
 
 
 class Work(SQLModel, table=True):
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     filename: str
     storage_path: str
@@ -32,13 +39,15 @@ class Work(SQLModel, table=True):
     output_path: Optional[str] = None
     error: Optional[str] = None
 
-    tasks: list["Task"] = Relationship(back_populates="work")
+    tasks: List["Task"] = Relationship(back_populates="work")
 
 
 class Task(SQLModel, table=True):
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    work_id: UUID = Field(foreign_key="works.id")
-    payload: Any
+    work_id: UUID = Field(foreign_key="work.id", index=True)
+
+    payload: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     status: TaskStatus = Field(default=TaskStatus.PENDING)
     result_path: Optional[str] = None
     attempts: int = Field(default=0)
@@ -46,5 +55,4 @@ class Task(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # relación con Work
     work: Optional[Work] = Relationship(back_populates="tasks")

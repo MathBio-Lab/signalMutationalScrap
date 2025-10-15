@@ -118,3 +118,4 @@ async def _process_task_async(self, task_id: str):
             raise self.retry(exc=exc)
         finally:
             release_token()
+

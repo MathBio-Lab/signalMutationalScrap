@@ -1,0 +1,153 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --accent: #0b7cff;
+  --muted: #6b7280;
+  --danger: #d9534f;
+}
+
+#result {
+  margin-top: 14px;
+}
+
+#meta {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+}
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: #111;
+}
+.card {
+  background: var(--card);
+  padding: 28px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(12, 15, 20, 0.06);
+  width: 100%;
+  max-width: 480px;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+p.lead {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.btn {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.small {
+  font-size: 12px;
+}
+.status {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.error {
+  color: var(--danger);
+}
+pre {
+  background: #f4f6f8;
+  padding: 10px;
+  border-radius: 6px;
+  overflow: auto;
+  font-size: 12px;
+}
+.meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 6px 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #0b1720;
+}
+input[type="file"] {
+  display: none;
+}
+
+.actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  inline-size: 100%;
+  min-height: 160px;
+  margin-top: 1rem;
+
+  padding: 2rem;
+  border: 2px dashed rgba(11, 124, 255, 0.25);
+  border-radius: 12px;
+
+  background: linear-gradient(180deg, rgba(11, 124, 255, 0.03), transparent);
+  transition: box-shadow 0.15s, border-color 0.15s, background-color 0.15s;
+  cursor: pointer;
+}
+
+.drop:hover {
+  background-color: rgba(11, 124, 255, 0.02);
+}
+
+.drop.dragover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 18px rgba(11, 124, 255, 0.1);
+}
+
+.result-box {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.result-success {
+  background: rgba(46, 204, 113, 0.12);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: #216c42;
+}
+
+.result-error {
+  background: rgba(217, 83, 79, 0.12);
+  border: 1px solid rgba(217, 83, 79, 0.3);
+  color: #a12b2b;
+}

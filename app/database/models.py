@@ -9,7 +9,7 @@ from sqlmodel import SQLModel, Field, Relationship
 if TYPE_CHECKING:
     from .models import (
         Task,
-    )  # evita errores de referencia circular en tiempo de ejecución
+    )
 
 
 class WorkStatus(str, Enum):
@@ -33,8 +33,8 @@ class Work(SQLModel, table=True):
     filename: str
     storage_path: str
     status: WorkStatus = Field(default=WorkStatus.PENDING)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     max_tasks: Optional[int] = None
     output_path: Optional[str] = None
     error: Optional[str] = None
@@ -52,7 +52,7 @@ class Task(SQLModel, table=True):
     result_path: Optional[str] = None
     attempts: int = Field(default=0)
     error: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     work: Optional[Work] = Relationship(back_populates="tasks")

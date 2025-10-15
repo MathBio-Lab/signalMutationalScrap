@@ -166,6 +166,8 @@ async def upload_csv(file: UploadFile = File(...)):
     with out_path.open("wb") as f:
         f.write(content)
 
+    
+
     response = {
         "ok": True,
         "filename": filename,

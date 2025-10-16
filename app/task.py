@@ -5,7 +5,7 @@ from redis import asyncio as aioredis
 from app.database.db import get_async_session
 from app.database.models import Task, TaskStatus
 from app.integrations.scraper import call_black_box
-from celery_app import celery
+from app.celery_app import celery
 
 r = aioredis.Redis()
 TOKEN_KEY = "global:processing_tokens"

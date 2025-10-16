@@ -12,7 +12,7 @@ class UploadCSVUseCase:
 
     async def execute(self, file_path: str, filename: str):
         try:
-            async with self.session.begin():  
+            async with self.session.begin():
                 work = Work(filename=filename, storage_path=file_path)
                 await self.work_repo.add(work)
 

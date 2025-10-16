@@ -1,7 +1,6 @@
 import fastapi
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.config.config import TEMPLATES
 
 # routes
 from app.api import upload

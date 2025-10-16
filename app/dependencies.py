@@ -26,4 +26,3 @@ async def get_upload_csv_use_case(
     task_repo: ITaskRepository = Depends(get_task_repository),
 ) -> UploadCSVUseCase:
     return UploadCSVUseCase(session, work_repo, task_repo)
-

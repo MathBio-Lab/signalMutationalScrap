@@ -1,9 +1,8 @@
-import os
 import re
 from pathlib import Path
-import httpx
-from bs4 import BeautifulSoup
 from typing import Dict
+import asyncio
+from playwright.async_api import async_playwright
 
 OUTPUT_DIR = Path("/tmp/scraper_results")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -15,8 +14,8 @@ def _safe_filename(s: str) -> str:
 
 def call_black_box(payload: Dict) -> str:
     """
-    Función sincrónica 'caja negra' que hace scraping y guarda un resultado en disco.
-    Retorna la ruta al archivo con el resultado.
+    Función sincrónica 'caja negra' que hace scraping con Playwright
+    y guarda un resultado en disco.
     payload expected keys: { "path": "some/page", "extra": ... }
     """
     url_path = payload.get("path") or payload.get("url")
@@ -30,29 +29,34 @@ def call_black_box(payload: Dict) -> str:
         base = payload.get("base") or "https://example.com"
         url = f"{base.rstrip('/')}/{url_path.lstrip('/')}"
 
-    # Petición HTTP bloqueante (httpx.Client es sincrónico)
-    with httpx.Client(timeout=15.0) as client:
-        resp = client.get(url)
-        resp.raise_for_status()
-        text = resp.text
+    # Función interna async para Playwright
+    async def _scrape(url: str) -> Dict:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(url, timeout=30000)  # 30s timeout
 
-    # Parseo con BeautifulSoup
-    soup = BeautifulSoup(text, "html.parser")
-    title_tag = soup.find("title")
-    title = title_tag.get_text(strip=True) if title_tag else "no-title"
+            # Ejemplo: extraer title
+            title = await page.title()
 
-    # Puedes extraer más cosas según necesites
-    # ejemplo: todos los h1
-    h1s = [h.get_text(strip=True) for h in soup.find_all("h1")]
+            # Ejemplo: extraer todos los h1
+            h1_elements = await page.query_selector_all("h1")
+            h1s = [await h.inner_text() for h in h1_elements]
 
-    # Guardar resultado (JSON simple o texto)
-    safe_name = _safe_filename(title)
+            await browser.close()
+            return {"title": title, "h1s": h1s}
+
+    # Ejecutamos la función async de manera sincrónica
+    result = asyncio.run(_scrape(url))
+
+    # Guardar resultado en disco
+    safe_name = _safe_filename(result["title"])
     out_path = OUTPUT_DIR / f"{safe_name}.txt"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(f"URL: {url}\n")
-        f.write(f"TITLE: {title}\n\n")
+        f.write(f"TITLE: {result['title']}\n\n")
         f.write("H1s:\n")
-        for h in h1s:
+        for h in result["h1s"]:
             f.write(f"- {h}\n")
 
     return str(out_path)

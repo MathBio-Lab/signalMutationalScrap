@@ -13,8 +13,6 @@ class WorkStatus(str, Enum):
 
 
 class Work:
-    """Aggregate Root del procesamiento de un archivo CSV."""
-
     def __init__(
         self,
         filename: str,

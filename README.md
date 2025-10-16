@@ -4,98 +4,46 @@ Cacheamos resultados
 Pedir permiso o solicitar un endpoint batch al propietario del sitio.
 Consumo de API (si existe).# signalMutationalScrap
 
-1. Diagrama lógico (resumen)
+# install 
 
-Cliente → FastAPI
+playwright install              
 
-/upload sube CSV
 
-/status/{idwork} consulta estado
+sudo apt update && sudo apt install -y \
+libgtk-4-1 \
+libgraphene-1.0-0 \
+libwoff2-1 \
+libvpx9 \
+libopus0 \
+gstreamer1.0-plugins-base \
+gstreamer1.0-plugins-good \
+gstreamer1.0-plugins-bad \
+gstreamer1.0-plugins-ugly \
+gstreamer1.0-libav \
+libflite1 \
+libflite-usenglish1 \
+libflite-cmu-grapheme-lang1 \
+libflite-cmu-grapheme-lex1 \
+libflite-cmu-indic-lang1 \
+libflite-cmu-indic-lex1 \
+libflite-cmulex1 \
+libflite-cmu-time-awb1 \
+libflite-cmu-us-awb1 \
+libflite-cmu-us-kal161 \
+libflite-cmu-us-kal1 \
+libflite-cmu-us-rms1 \
+libflite-cmu-us-slt1 \
+libwebpdemux2 \
+libavif16 \
+libharfbuzz-icu0 \
+libwebpmux3 \
+libenchant-2-2 \
+libsecret-1-0 \
+libhyphen0 \
+libmanette-0.2-0 \
+libgles2 \
+libx264-163
 
-/download/{idwork} descarga output (si completed)
-
-FastAPI:
-
-guarda CSV en storage (S3 o uploads/ local)
-
-crea registro Work en Postgres con idwork, estado PENDING
-
-expande CSV en N tareas (según tu regla o tope max_tasks) — crea filas Task en Postgres
-
-encola jobs en Redis/Celery (solo metadata de job: task_id, input_path, etc.)
-
-Redis: broker para Celery + almacén para semáforo / tokens (límite concurrente)
-
-Celery workers ("caja negra"):
-
-toman job, adquieren token (si no hay token, re-enqueue or wait), procesan, escriben output en storage, actualizan estado Task y Work en Postgres, registran error si falla
-
-Postgres: persistencia de metadata y trazabilidad
-
-Storage (S3 o disco): archivos originales y outputs
-
-POST /upload
-
-Recibe CSV y un parámetro opcional max_tasks o resource_limit.
-
-Guarda CSV (S3/local). Crea Work en DB.
-
-Lee CSV (sin procesar todo en memoria: stream) y crea filas Task hasta max_tasks (o crea todas y deja el control de ejecución separado).
-
-Para cada Task encola un job en Celery (payload reducido: task_id, path, meta).
-
-Respuesta: { "idwork": "<uuid>", "tasks_enqueued": N }
-
-GET /status/{idwork}
-
-Devuelve estado del Work (counts por Task.status, porcentaje, errores, y si hay output_path).
-
-Incluye link de descarga si Work.status == COMPLETED o Task.status == COMPLETED.
-
-GET /download/{idwork}
-
-Verifica estado COMPLETED. Sirve archivo desde S3 o archivo local con send_file.
-
-(Opcional) POST /cancel/{idwork}
-
-Marca Work y tasks como CANCELLED y envía revocación a Celery (si posible). Limpieza de recursos.
-
-Control de concurrencia / límite de creación de tareas
-
-Tienes dos requerimientos:
-
-controlar cuántas tareas se generan;
-
-controlar cuántas tareas se ejecutan concurrentemente (por recursos).
-
-Opciones:
-
-A) Límite en creación:
-Cuando subes el CSV, aceptas un parámetro max_tasks. Al leer el CSV creas hasta max_tasks Task rows. Sencillo.
-
-B) Límite en ejecución (recomendado global): Redis Token Bucket / Semaphore
-Implementación simple con Redis:
-
-Una clave semaphore:{name} con contador INCR/DECR.
-
-Antes de ejecutar una tarea, worker intenta GET y DECR atomically (usando lua o SETNX + expire), o usar redlock/redis.lock.
-
-Si no hay tokens: re-enqueue la tarea con backoff o dejar en estado PENDING y el scheduler la re-intenta.
-
-Beneficios:
-
-Control global entre múltiples workers y máquinas.
-
-Puedes cambiar el límite en caliente poniendo el número de tokens deseado.
-
-Pseudocódigo de adquisición:
-
-# acquire token (atomic)
-
-if redis.decr("tokens") >= 0: # proceed
-else:
-redis.incr("tokens") # devolver si no hay
-raise NoToken
 
 # uso aplicar el historial de migraciones
 

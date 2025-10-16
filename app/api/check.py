@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
-
 from app.config.config import TEMPLATES
 
 

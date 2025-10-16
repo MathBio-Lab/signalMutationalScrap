@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 from uuid import uuid4
 from datetime import datetime
 
@@ -9,7 +10,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 class Task:
-    def __init__(self, work_id: str, payload: dict):
+    def __init__(self, work_id: str, payload: Optional[dict] = None):
         self.id = str(uuid4())
         self.work_id = work_id
         self.payload = payload

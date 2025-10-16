@@ -1,9 +1,12 @@
 import asyncio
+import csv
 import os
 import shutil
+import uuid
+import random
 from pathlib import Path
 from playwright.async_api import async_playwright, TimeoutError as PWTimeoutError
-import uuid
+from app.utils.destructure_file import destructure_csvs
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -16,6 +19,24 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 WORKS_DIR.mkdir(parents=True, exist_ok=True)
 DEBUG_DIR.mkdir(parents=True, exist_ok=True)
 
+from pathlib import Path
+
+
+def load_mapping_from_filename(upload_path: Path) -> dict[str, str]:
+    """
+    Lee un CSV con columnas SP y DO y devuelve un diccionario DO -> SP.
+    upload_path: ruta completa al CSV de entrada
+    """
+    mapping = {}
+    upload_path = Path(upload_path)
+    with upload_path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            donor_id = row["_PATIENT"].strip()
+            sp_id = row["Donor_ID"].strip()
+            mapping[donor_id] = sp_id
+    return mapping
+
 
 async def scrape_signal(ids, work_id: str):
     """
@@ -24,12 +45,10 @@ async def scrape_signal(ids, work_id: str):
     - work_id: UUID o string del Work
     - ids: lista de Donor IDs (ej: ["DO46416", "DO36062"])
     """
-    # Crear carpeta del Work
     work_dir = WORKS_DIR / work_id
     downloads_dir = work_dir / "downloads"
     downloads_dir.mkdir(parents=True, exist_ok=True)
 
-    # Inicializar navegador
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context(accept_downloads=True)
@@ -50,45 +69,39 @@ async def scrape_signal(ids, work_id: str):
                     os.symlink(cached_csv.resolve(), work_csv)
                 except OSError:
                     shutil.copy2(cached_csv, work_csv)
+                # Sleep corto para no golpear el server innecesariamente
+                await asyncio.sleep(0.1)
                 continue
 
             # --- Si no está en cache, scrapear ---
             print(f"⚙️  Descargando CSV para {id_} ...")
 
             try:
-                # Abrir input
                 await page.click("div.Search__Container-sc-9sy7fy-1.jJwwcd")
-
                 input_selector = "input[class*='text__Input'], input[class*='Text__Input'], input.bdWgKS"
                 await page.wait_for_selector(
                     input_selector, timeout=15000, state="visible"
                 )
-
                 input_loc = page.locator(input_selector)
                 await input_loc.click()
                 await input_loc.fill(id_)
 
-                # Esperar botón “Go to page”
                 go_button_selector = "a[href^='/explore/cancerSample/'] div.PreviewPane__Button-sc-1qbxaw4-5"
                 await page.wait_for_selector(
                     go_button_selector, timeout=15000, state="visible"
                 )
-
                 await page.click(go_button_selector)
                 await page.wait_for_load_state("networkidle")
 
-                # Esperar “Download as CSV”
                 csv_button_selector = "button[label='Download as CSV']"
                 await page.wait_for_selector(
                     csv_button_selector, timeout=20000, state="visible"
                 )
 
-                # Descargar
                 async with page.expect_download() as download_info:
                     await page.click(csv_button_selector)
                 download = await download_info.value
 
-                # Guardar tanto en cache como en el Work
                 await download.save_as(str(cached_csv))
                 try:
                     os.symlink(cached_csv.resolve(), work_csv)
@@ -97,15 +110,15 @@ async def scrape_signal(ids, work_id: str):
 
                 print(f"📥 CSV guardado y cacheado: {cached_csv}")
 
+                # --- Rate limit humano: sleep aleatorio 1-3s ---
+                await asyncio.sleep(random.uniform(1, 3))
+
             except PWTimeoutError:
-                # Guardar debug si falla
                 debug_png = DEBUG_DIR / f"debug_{safe_id}.png"
                 debug_html = DEBUG_DIR / f"debug_{safe_id}.html"
-
                 await page.screenshot(path=str(debug_png), full_page=True)
                 html = await page.content()
                 debug_html.write_text(html, encoding="utf-8")
-
                 print(f"⚠️ Timeout en {id_}. Debug: {debug_png}")
                 continue
 
@@ -115,8 +128,17 @@ async def scrape_signal(ids, work_id: str):
     return work_dir
 
 
-# Ejemplo de uso
 if __name__ == "__main__":
     test_work_id = str(uuid.uuid4())
-    ids = ["DO46416", "DO36062"]
-    asyncio.run(scrape_signal(ids, work_id=test_work_id))
+
+    filename = "pcawg_ids_matched_DonorID_20251008_183516.csv"
+    upload_path = Path(__file__).resolve().parents[1] / "uploads" / filename
+
+    mapping = load_mapping_from_filename(upload_path)
+    ids = list(mapping.keys())  # los DOs a scrapear
+
+    # Ejecutar scraper
+    work_dir = asyncio.run(scrape_signal(ids, work_id=test_work_id))
+
+    # Procesar los CSV descargados
+    destructure_csvs(work_dir, mapping)

@@ -1,12 +1,13 @@
 import csv
 from pathlib import Path
 
+
 def load_mapping(uploaded_csv: Path) -> dict[str, str]:
     """
     Lee un archivo Donor_ID,_PATIENT (SP↔DO) y devuelve un mapping DO → SP.
     """
     mapping = {}
-    with open(uploaded_csv, newline='', encoding='utf-8') as f:
+    with open(uploaded_csv, newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
         next(reader)  # saltar encabezado
         for row in reader:

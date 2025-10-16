@@ -14,7 +14,7 @@ def destructure_csvs(work_dir: Path, mapping: dict):
         print("⚠️ No se encontraron CSVs en", downloads_dir)
         return None
 
-    combined_df: pd.DataFrame | None = None  
+    combined_df: pd.DataFrame | None = None
 
     for csv_file in csv_files:
         do_id = csv_file.stem

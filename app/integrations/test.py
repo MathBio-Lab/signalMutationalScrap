@@ -14,18 +14,16 @@ CACHE_DIR = BASE_DIR / "cache"
 WORKS_DIR = BASE_DIR / "works"
 DEBUG_DIR = BASE_DIR / "debug"
 
-# Crear carpetas base
+# Create base folders
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 WORKS_DIR.mkdir(parents=True, exist_ok=True)
 DEBUG_DIR.mkdir(parents=True, exist_ok=True)
 
-from pathlib import Path
-
 
 def load_mapping_from_filename(upload_path: Path) -> dict[str, str]:
     """
-    Lee un CSV con columnas SP y DO y devuelve un diccionario DO -> SP.
-    upload_path: ruta completa al CSV de entrada
+    Reads a CSV file with columns SP and DO and returns a dictionary DO -> SP.
+    upload_path: full path to the input CSV
     """
     mapping = {}
     upload_path = Path(upload_path)
@@ -40,41 +38,42 @@ def load_mapping_from_filename(upload_path: Path) -> dict[str, str]:
 
 async def scrape_signal(ids, work_id: str):
     """
-    Descarga (o reutiliza) los CSVs de Mutational Signatures.
+    Downloads (or reuses) Mutational Signatures CSVs.
 
-    - work_id: UUID o string del Work
-    - ids: lista de Donor IDs (ej: ["DO46416", "DO36062"])
+    - work_id: UUID or string identifier for the job
+    - ids: list of Donor IDs (e.g. ["DO46416", "DO36062"])
     """
     work_dir = WORKS_DIR / work_id
     downloads_dir = work_dir / "downloads"
     downloads_dir.mkdir(parents=True, exist_ok=True)
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
 
         await page.goto("https://signal.mutationalsignatures.com/", timeout=60000)
         await page.wait_for_load_state("networkidle")
 
-        for id_ in ids:
+        downloaded_count = 0  # track only actual downloads
+
+        for idx, id_ in enumerate(ids, start=1):
             safe_id = id_.replace("/", "_").replace("\\", "_")
             cached_csv = CACHE_DIR / f"{safe_id}.csv"
             work_csv = downloads_dir / f"{safe_id}.csv"
 
-            # --- Si ya está en cache, crear symlink o copiar ---
+            # --- Use existing cache if available ---
             if cached_csv.exists():
-                print(f"Usando cache existente para {id_}")
+                print(f"Using cached file for {id_}")
                 try:
                     os.symlink(cached_csv.resolve(), work_csv)
                 except OSError:
                     shutil.copy2(cached_csv, work_csv)
-                # Sleep corto para no golpear el server innecesariamente
                 await asyncio.sleep(0.1)
                 continue
 
-            # --- Si no está en cache, scrapear ---
-            print(f"⚙️  Descargando CSV para {id_} ...")
+            # --- Download CSV if not cached ---
+            print(f"⚙️  Downloading CSV for {id_} ...")
 
             try:
                 await page.click("div.Search__Container-sc-9sy7fy-1.jJwwcd")
@@ -108,9 +107,11 @@ async def scrape_signal(ids, work_id: str):
                 except OSError:
                     shutil.copy2(cached_csv, work_csv)
 
-                print(f"📥 CSV guardado y cacheado: {cached_csv}")
+                print(f"📥 CSV saved and cached: {cached_csv}")
 
-                # --- Rate limit humano: sleep aleatorio 1-3s ---
+                downloaded_count += 1  # increment only when actually downloaded
+
+                # --- Random sleep between downloads to avoid rate limiting ---
                 await asyncio.sleep(random.uniform(1, 3))
 
             except PWTimeoutError:
@@ -119,12 +120,25 @@ async def scrape_signal(ids, work_id: str):
                 await page.screenshot(path=str(debug_png), full_page=True)
                 html = await page.content()
                 debug_html.write_text(html, encoding="utf-8")
-                print(f"⚠️ Timeout en {id_}. Debug: {debug_png}")
+                print(f"⚠️ Timeout on {id_}. Debug saved at: {debug_png}")
                 continue
+
+            # --- Restart browser and context every 60 IDs to avoid memory leaks ---
+            if downloaded_count > 0 and downloaded_count % 60 == 0:
+                print("♻️ Restarting browser to free memory...")
+                await context.close()
+                await browser.close()
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context(accept_downloads=True)
+                page = await context.new_page()
+                await page.goto(
+                    "https://signal.mutationalsignatures.com/", timeout=60000
+                )
+                await page.wait_for_load_state("networkidle")
 
         await browser.close()
 
-    print(f"Work completado: {work_dir}")
+    print(f"Work completed: {work_dir}")
     return work_dir
 
 
@@ -135,10 +149,11 @@ if __name__ == "__main__":
     upload_path = Path(__file__).resolve().parents[1] / "uploads" / filename
 
     mapping = load_mapping_from_filename(upload_path)
-    ids = list(mapping.keys())  # los DOs a scrapear
+    ids = list(mapping.keys())  # List of Donor IDs
 
-    # Ejecutar scraper
+    # Run scraper
     work_dir = asyncio.run(scrape_signal(ids, work_id=test_work_id))
 
-    # Procesar los CSV descargados
+    # Process downloaded CSVs
     destructure_csvs(work_dir, mapping)
+    print("All done.")

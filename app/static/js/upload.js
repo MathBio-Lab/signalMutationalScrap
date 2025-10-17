@@ -167,7 +167,7 @@
           <strong>Archivo subido correctamente:</strong> ${escapeHtml(
             state.file.name
           )}<br>
-          <span class="muted small">Puedes revisar el estado en <a href="/check.html">check.html</a></span>
+          <span class="muted small">Puedes revisar el estado en <a href="/check">check</a></span>
         </div>
       `;
       } else {

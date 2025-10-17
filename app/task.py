@@ -1,3 +1,4 @@
+import os
 from celery import shared_task
 import psutil
 import asyncio
@@ -6,17 +7,18 @@ from app.database.db import get_async_session
 from app.database.models import Task, TaskStatus
 from app.integrations.scraper import call_black_box
 from app.celery_app import celery
+from redis import asyncio as aioredis
 
-r = aioredis.Redis()
+REDIS_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+r = aioredis.from_url(REDIS_URL, decode_responses=True)
+
 TOKEN_KEY = "global:processing_tokens"
 
 
 async def set_initial_tokens():
-    """Configura el número de tokens según la RAM disponible."""
     try:
         mem = psutil.virtual_memory()
         available_gb = mem.available / (1024**3)
-
         tokens = max(1, int(available_gb // 2))
 
         if not await r.exists(TOKEN_KEY):
@@ -26,11 +28,9 @@ async def set_initial_tokens():
             current = int(await r.get(TOKEN_KEY) or 0)
             print(f"[INIT] Tokens existentes detectados: {current}. No se modifican.")
     except Exception as e:
+        print(f"[WARN] Error inicializando tokens: {e}")
         if not await r.exists(TOKEN_KEY):
             await r.set(TOKEN_KEY, 1)
-        print(
-            f"[WARN] No se pudo calcular tokens dinámicamente ({e}). Se usa 1 por defecto."
-        )
 
 
 # --- Inicialización segura ---
@@ -48,15 +48,12 @@ init_tokens_sync()
 
 # --- Funciones síncronas (para usar dentro de Celery) ---
 def acquire_token():
-    """Versión síncrona usando asyncio para compatibilidad con Celery."""
-
     async def _acquire():
         async with r.pipeline() as pipe:
             while True:
                 try:
                     await pipe.watch(TOKEN_KEY)
-                    value = await r.get(TOKEN_KEY)
-                    tokens = int(value or 0)
+                    tokens = int(await r.get(TOKEN_KEY) or 0)
                     if tokens <= 0:
                         await pipe.unwatch()
                         return False
@@ -66,16 +63,12 @@ def acquire_token():
                     return True
                 except aioredis.WatchError:
                     continue
-
     return asyncio.run(_acquire())
 
 
 def release_token():
-    """Libera un token (versión síncrona)."""
-
     async def _release():
         await r.incr(TOKEN_KEY)
-
     asyncio.run(_release())
 
 
@@ -118,4 +111,3 @@ async def _process_task_async(self, task_id: str):
             raise self.retry(exc=exc)
         finally:
             release_token()
-

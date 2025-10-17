@@ -15,13 +15,19 @@ class UploadCSVUseCase:
             async with self.session.begin():
                 work = Work(filename=filename, storage_path=file_path)
                 await self.work_repo.add(work)
+                print(f"[UseCase] Work created: {work.id}")
 
                 task = Task(work_id=work.id, payload={"csv_path": file_path})
                 await self.task_repo.add(task)
+                print(f"[UseCase] Task created: {task.id}")
 
+            # Encolar tarea Celery
             process_task.delay(str(task.id))  # type: ignore
+            print(f"[UseCase] Task {task.id} enqueued in Celery")
+
             return {"work_id": work.id, "task_id": task.id}
 
-        except Exception:
+        except Exception as e:
             await self.session.rollback()
+            print(f"[UseCase] Exception: {e}")
             raise

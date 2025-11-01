@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # routes
 from app.api import upload
 from app.api import check
-from app.celery.task.task import set_initial_tokens
+from app.celery.task.process_task import set_initial_tokens
 
 app = fastapi.FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

@@ -13,10 +13,10 @@ class TaskRepository(ITaskRepository):
 
     async def add(self, task: Task) -> None:
         model = TaskModel(
-            id=UUID(task.id), 
-            work_id=UUID(task.work_id), 
+            id=UUID(task.id),
+            work_id=UUID(task.work_id),
             payload=task.payload,
-            status=DBTaskStatus(task.status.value), 
+            status=DBTaskStatus(task.status.value),
             result_path=task.result_path,
             attempts=task.attempts,
             error=task.error,
@@ -72,4 +72,3 @@ class TaskRepository(ITaskRepository):
             task.updated_at = db_task.updated_at
             entities.append(task)
         return entities
-

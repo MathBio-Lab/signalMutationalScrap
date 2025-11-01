@@ -44,8 +44,6 @@ async def upload_csv(
     out_path = UPLOAD_DIR / filename
     out_path.write_bytes(content)
 
-    # --- Delegar todo a UseCase ---
-    # UseCase se encarga de crear Work, Task y encolar Celery
     try:
         response = await use_case.execute(file_path=str(out_path), filename=filename)
     except Exception as e:

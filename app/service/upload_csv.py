@@ -1,7 +1,7 @@
 from app.entities.work import Work
 from app.entities.task import Task
 from app.repositories.repositories import ITaskRepository, IWorkRepository
-from app.celery.task.task import process_task
+from app.celery.task.process_task import process_task as celery_process_task
 
 
 class UploadCSVUseCase:
@@ -11,23 +11,25 @@ class UploadCSVUseCase:
         self.task_repo = task_repo
 
     async def execute(self, file_path: str, filename: str):
-        try:
-            async with self.session.begin():
+        async with self.session.begin():  
+            try:
+                # Crear Work
                 work = Work(filename=filename, storage_path=file_path)
                 await self.work_repo.add(work)
+                await self.session.flush()
+
+                # Crear Task
+                db_task = Task(work_id=work.id, payload={"csv_path": file_path})
+                await self.task_repo.add(db_task)
                 print(f"[UseCase] Work created: {work.id}")
+                print(f"[UseCase] Task created: {db_task.id}")
 
-                task = Task(work_id=work.id, payload={"csv_path": file_path})
-                await self.task_repo.add(task)
-                print(f"[UseCase] Task created: {task.id}")
+            except Exception as e:
+                print(f"[UseCase] Exception: {e}")
+                raise
 
-            # Encolar tarea Celery
-            process_task.delay(str(task.id))  # type: ignore
-            print(f"[UseCase] Task {task.id} enqueued in Celery")
+        # Encolar tarea Celery
+        celery_process_task.apply_async(args=[str(db_task.id)]) # type: ignore
+        print(f"[UseCase] Task {db_task.id} enqueued in Celery")
 
-            return {"work_id": work.id, "task_id": task.id}
-
-        except Exception as e:
-            await self.session.rollback()
-            print(f"[UseCase] Exception: {e}")
-            raise
+        return {"work_id": work.id, "task_id": db_task.id}

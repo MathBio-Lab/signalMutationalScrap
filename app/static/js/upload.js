@@ -160,6 +160,7 @@
     try {
       const resp = await fetch("/", { method: "POST", body: fd });
       const json = await resp.json();
+      console.log("Respuesta del servidor:", json);
       if (resp.ok && json.ok) {
         mkStatus("Subida completa ✅");
         result.innerHTML = `
@@ -167,7 +168,7 @@
           <strong>Archivo subido correctamente:</strong> ${escapeHtml(
             state.file.name
           )}<br>
-          <span class="muted small">Puedes revisar el estado en <a href="/check">check</a></span>
+          <span class="muted small">Puedes revisar el estado de en <a href="/check">check</a></span>
         </div>
       `;
       } else {

@@ -8,6 +8,7 @@ celery = Celery(
     "app",
     broker=broker_url,
     backend=backend_url,
+    include=["app.celery.task.process_task"]
 )
 
 celery.conf.update(

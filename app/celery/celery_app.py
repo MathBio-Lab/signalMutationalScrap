@@ -1,8 +1,8 @@
 from celery import Celery
 import os
 
-broker_url = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-backend_url = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+broker_url = os.getenv("CELERY_BROKER_URL", "redis://localhost:6380/0")
+backend_url = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6380/1")
 
 celery = Celery(
     "app",

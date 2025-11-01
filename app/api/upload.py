@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from app.config.config import TEMPLATES, UPLOAD_DIR
-from app.dependencies import get_upload_csv_use_case
+from app.core.dependencies import get_upload_csv_use_case
 from app.service.upload_csv import UploadCSVUseCase
 from app.utils.validate_csv_bytes import validate_csv_bytes
 

@@ -1,7 +1,7 @@
 from app.entities.work import Work
 from app.entities.task import Task
 from app.repositories.repositories import ITaskRepository, IWorkRepository
-from app.task import process_task
+from app.celery.task.task import process_task
 
 
 class UploadCSVUseCase:

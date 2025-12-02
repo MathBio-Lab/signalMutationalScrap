@@ -23,7 +23,7 @@ async def get_task_status(
     - error: Mensaje de error (si falló)
     - result_path: Ruta del resultado (si completó)
     """
-    stmt = select(TaskModel).where(TaskModel.work_id == work_id)
+    stmt = select(TaskModel).where(TaskModel.work_id == work_id)  # type: ignore
     result = await session.execute(stmt)
     task = result.scalar_one_or_none()
     

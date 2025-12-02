@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import upload
 from app.api import check
 from app.api import status
+from app.api import download
 from app.celery.task.process_task import set_initial_tokens
 
 app = fastapi.FastAPI()
@@ -24,6 +25,7 @@ async def on_app_startup():
 app.include_router(upload.router)
 app.include_router(check.router)
 app.include_router(status.router)
+app.include_router(download.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

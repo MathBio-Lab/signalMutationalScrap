@@ -1,54 +1,129 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Subir CSV — Minimal</title>
-    <link rel="stylesheet" href="/static/css/reset.css" />
-    <link rel="stylesheet" href="/static/css/upload.css" />
-  </head>
-  <body>
-    <main class="card" role="main">
-      <h1>Sube tu archivo CSV</h1>
-      <p class="lead">
-        Arrastra y suelta un archivo .csv o haz clic para seleccionarlo.
-        Validamos cliente y servidor.
-      </p>
 
-      <form
-        id="uploadForm"
-        method="post"
-        enctype="multipart/form-data"
-        action="/upload"
-        novalidate
-        class="form"
-      >
-        <label id="dropzone" class="drop" for="fileInput" data-dropzone>
-          <div id="prompt">
-            <strong id="promptTitle">Suelta el CSV aquí</strong>
-            <div class="muted small" id="promptSub">
-              O haz clic para elegir un archivo. Solo .csv
-            </div>
-            <div class="meta" id="meta" aria-hidden="true">
-              <span class="chip">soporta: , ; tab |</span>
-            </div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Subir CSV — Minimal</title>
+  <link rel="stylesheet" href="/static/css/reset.css" />
+  <link rel="stylesheet" href="/static/css/upload.css" />
+</head>
+
+<body>
+  <main class="card" role="main">
+    <h1>Sube tu archivo CSV</h1>
+    <p class="lead">
+      Arrastra y suelta un archivo .csv o haz clic para seleccionarlo.
+      Validamos cliente y servidor.
+    </p>
+
+    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload" novalidate class="form">
+      <label id="dropzone" class="drop" for="fileInput" data-dropzone>
+        <div id="prompt">
+          <strong id="promptTitle">Suelta el CSV aquí</strong>
+          <div class="muted small" id="promptSub">
+            O haz clic para elegir un archivo. Solo .csv
           </div>
-          <input
-            id="fileInput"
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-          />
-        </label>
-
-        <div class="actions-group">
-          <button type="submit" class="btn" id="submitBtn">Subir</button>
-          <div id="status" class="status muted">Sin archivo seleccionado</div>
+          <div class="meta" id="meta" aria-hidden="true">
+            <span class="chip">soporta: , ; tab |</span>
+          </div>
         </div>
-      </form>
+        <input id="fileInput" name="file" type="file" accept=".csv,text/csv" />
+      </label>
 
-      <div id="result" aria-live="polite"></div>
-    </main>
-  </body>
-  <script src="{{ url_for('static', path='/js/upload.js') }}" defer></script>
+      <div class="actions-group">
+        <button type="submit" class="btn" id="submitBtn">Subir</button>
+        <div id="status" class="status muted">Sin archivo seleccionado</div>
+      </div>
+    </form>
+
+    <!-- Sección de estado de la tarea -->
+    <div id="taskStatus" class="task-status" style="display: none;">
+      <h2>Estado de tu trabajo</h2>
+      <div class="status-info">
+        <p><strong>Work ID:</strong> <span id="workId"></span></p>
+        <div id="statusBadge" class="status-badge"></div>
+        <p id="statusMessage"></p>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <a id="downloadBtn" href="#" class="btn download-btn" style="display: none;">Descargar Resultado</a>
+      </div>
+    </div>
+
+    <div id="result" aria-live="polite"></div>
+  </main>
+
+  <style>
+    .task-status {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+
+    .task-status h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      color: #333;
+    }
+
+    .status-info {
+      margin-top: 1rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 0.5rem 0;
+    }
+
+    .status-badge.pending {
+      background: #ffc107;
+      color: #000;
+    }
+
+    .status-badge.running {
+      background: #17a2b8;
+      color: #fff;
+    }
+
+    .status-badge.completed {
+      background: #28a745;
+      color: #fff;
+    }
+
+    .status-badge.failed {
+      background: #dc3545;
+      color: #fff;
+    }
+
+    .error-message {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 4px;
+      color: #721c24;
+    }
+
+    .download-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: #28a745;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .download-btn:hover {
+      background: #218838;
+    }
+  </style>
+</body>
+<script src="{{ url_for('static', path='/js/upload.js') }}" defer></script>
+
 </html>

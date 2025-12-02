@@ -1,35 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Estado de tu trabajo</title>
-    <link rel="stylesheet" href="/static/css/reset.css" />
-    <link rel="stylesheet" href="/static/css/work_status.css" />
-  </head>
-  <body>
-    <div class="container">
-      <h1>Consultar trabajo</h1>
-      <form method="post">
-        <input
-          type="text"
-          name="work_id"
-          placeholder="Ingresa tu Work ID"
-          required
-        />
-        <button type="submit">Consultar</button>
-      </form>
 
-      {% if status %}
-      <div
-        class="status-card {% if status == 'ok' %}ok{% elif status == 'pendiente' %}pending{% else %}error{% endif %}"
-      >
-        Estado: {{ status|capitalize }}
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estado de tu trabajo</title>
+  <link rel="stylesheet" href="/static/css/reset.css" />
+  <link rel="stylesheet" href="/static/css/work_status.css" />
+</head>
 
-      {% if status == 'ok' %}
-      <a href="{{ download_url }}" class="download">Descargar resultado</a>
-      {% endif %} {% endif %}
+<body>
+  <div class="container">
+    <h1>Consultar trabajo</h1>
+    <form method="post">
+      <input type="text" name="work_id" placeholder="Ingresa tu Work ID" required />
+      <button type="submit">Consultar</button>
+    </form>
+
+    {% if status %}
+    <div
+      class="status-card {% if status == 'completed' %}ok{% elif status == 'pending' or status == 'running' %}pending{% else %}error{% endif %}">
+      <strong>Estado:</strong> {{ status|capitalize }}
+      {% if work_id %}
+      <br><small>Work ID: {{ work_id }}</small>
+      {% endif %}
+      {% if error_message %}
+      <br><br><strong>Error:</strong> {{ error_message }}
+      {% endif %}
     </div>
-  </body>
+
+    {% if status == 'completed' and download_url %}
+    <a href="{{ download_url }}" class="download">Descargar resultado</a>
+    {% elif status == 'running' %}
+    <p style="text-align: center; color: #666;">La tarea se está ejecutando. Por favor espera...</p>
+    {% elif status == 'pending' %}
+    <p style="text-align: center; color: #666;">La tarea está en cola. Será procesada pronto...</p>
+    {% endif %}
+    {% endif %}
+  </div>
+</body>
+
 </html>

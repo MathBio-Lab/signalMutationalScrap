@@ -43,13 +43,13 @@
     return String(s).replace(
       /[&<>"']/g,
       (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        }[c])
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[c])
     );
   }
 
@@ -161,16 +161,26 @@
       const resp = await fetch("/", { method: "POST", body: fd });
       const json = await resp.json();
       console.log("Respuesta del servidor:", json);
+
       if (resp.ok && json.ok) {
         mkStatus("Subida completa ✅");
+
+        // Mostrar sección de estado
+        const taskStatusDiv = qs("#taskStatus");
+        const workIdSpan = qs("#workId");
+
+        taskStatusDiv.style.display = "block";
+        workIdSpan.textContent = json.work_id;
+
+        // Iniciar polling del estado
+        startStatusPolling(json.work_id);
+
         result.innerHTML = `
-        <div class="result-box result-success">
-          <strong>Archivo subido correctamente:</strong> ${escapeHtml(
-            state.file.name
-          )}<br>
-          <span class="muted small">Puedes revisar el estado de en <a href="/check">check</a></span>
-        </div>
-      `;
+          <div class="result-box result-success">
+            <strong>Archivo subido correctamente:</strong> ${escapeHtml(state.file.name)}<br>
+            <span class="muted small">El estado se actualizará automáticamente abajo</span>
+          </div>
+        `;
       } else {
         mkStatus("Error al subir", "error");
         mkResult(json);
@@ -180,6 +190,81 @@
       mkResult({ ok: false, error: err.message || String(err) });
     }
   });
+
+  // Función para hacer polling del estado
+  let pollingInterval = null;
+
+  function startStatusPolling(workId) {
+    // Limpiar polling anterior si existe
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    // Hacer primera consulta inmediatamente
+    updateTaskStatus(workId);
+
+    // Consultar cada 3 segundos
+    pollingInterval = setInterval(() => {
+      updateTaskStatus(workId);
+    }, 3000);
+  }
+
+  async function updateTaskStatus(workId) {
+    try {
+      const resp = await fetch(`/api/status/${workId}`);
+      const data = await resp.json();
+
+      const statusBadge = qs("#statusBadge");
+      const statusMessage = qs("#statusMessage");
+      const errorMessage = qs("#errorMessage");
+      const downloadBtn = qs("#downloadBtn");
+
+      // Actualizar badge de estado
+      statusBadge.className = "status-badge " + data.status.toLowerCase();
+      statusBadge.textContent = data.status;
+
+      // Actualizar mensaje según el estado
+      switch (data.status) {
+        case "pending":
+          statusMessage.textContent = "La tarea está en cola, será procesada pronto...";
+          break;
+        case "running":
+          statusMessage.textContent = "El scraper está descargando los CSVs. Esto puede tomar varios minutos...";
+          break;
+        case "completed":
+          statusMessage.textContent = "¡Proceso completado! Tu archivo está listo para descargar.";
+          downloadBtn.href = data.download_url;
+          downloadBtn.style.display = "inline-block";
+          // Detener polling
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          break;
+        case "failed":
+          statusMessage.textContent = "La tarea falló durante la ejecución.";
+          if (data.error) {
+            errorMessage.textContent = "Error: " + data.error;
+            errorMessage.style.display = "block";
+          }
+          // Detener polling
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          break;
+        case "not_found":
+          statusMessage.textContent = "No se encontró la tarea.";
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          break;
+      }
+    } catch (err) {
+      console.error("Error al consultar estado:", err);
+    }
+  }
 
   drop.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") input.click();

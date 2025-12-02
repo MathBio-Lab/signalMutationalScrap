@@ -4,7 +4,7 @@ import asyncio
 from redis import asyncio as aioredis
 from app.database.db import get_async_session
 from app.database.models import Task, TaskStatus
-from app.integrations.scraper import call_black_box
+from app.integrations.scraper_service import run_scraper_job
 from app.celery.celery_app import broker_url
 
 # ------------------------------
@@ -69,9 +69,17 @@ def process_task(self, task_id: str):
 # Función asíncrona interna
 # ==============================
 async def _process_task_async(self, task_id: str):
-    async for db in get_async_session():
-        db_task = await db.get(Task, task_id)  # Evitamos colisión de nombres
+    db_task = None
+    db = None
+    
+    try:
+        async for session in get_async_session():
+            db = session
+            db_task = await db.get(Task, task_id)
+            break
+            
         if not db_task:
+            print(f"[ERROR] Task {task_id} not found in database")
             return
 
         if not await acquire_token():
@@ -88,14 +96,21 @@ async def _process_task_async(self, task_id: str):
 
             # Ejecutamos función pesada sin bloquear el loop
             loop = asyncio.get_running_loop()
-            result_path = await loop.run_in_executor(None, call_black_box, db_task.payload)
+            result_path = await loop.run_in_executor(
+                None, 
+                run_scraper_job, 
+                db_task.payload["csv_path"],
+                str(db_task.work_id)
+            )
 
             # Guardamos resultado y marcamos completada
             db_task.result_path = result_path
             db_task.status = TaskStatus.COMPLETED
             await db.commit()
+            print(f"[SUCCESS] Task {task_id} completed successfully")
 
         except Exception as exc:
+            print(f"[ERROR] Task {task_id} failed: {exc}")
             db_task.attempts += 1
             db_task.status = TaskStatus.FAILED
             db_task.error = str(exc)
@@ -104,3 +119,18 @@ async def _process_task_async(self, task_id: str):
         
         finally:
             await release_token()
+            
+    except Exception as exc:
+        # Error al conectar a la DB o error general
+        print(f"[CRITICAL ERROR] Failed to process task {task_id}: {exc}")
+        
+        # Intentar actualizar el estado si tenemos la tarea
+        if db_task and db:
+            try:
+                db_task.status = TaskStatus.FAILED
+                db_task.error = f"Error crítico: {str(exc)}"
+                await db.commit()
+            except Exception as commit_error:
+                print(f"[ERROR] Could not update task status: {commit_error}")
+        
+        raise
